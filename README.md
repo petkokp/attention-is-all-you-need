@@ -28,7 +28,11 @@ python train.py
 python test.py
 ```
 
-
+**4. Plot results (plots are added to the experiment's directory in `experiments`):**
+   
+```
+python plot.py
+```
 
 ## Paper:
 
