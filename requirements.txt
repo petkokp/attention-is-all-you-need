@@ -1,0 +1,8 @@
+nltk
+spacy
+torch
+tqdm
+portalocker
+tensorboard
+pandas
+seaborn
