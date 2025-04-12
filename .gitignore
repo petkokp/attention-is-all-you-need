@@ -1,6 +1,9 @@
 .idea/
 runs/
-data/
+data/multi30k*
+data/training.tar.gz
+data/validation.tar.gz
+data/mmt16_task1_test.tar.gz
 **/weights
 
 # Byte-compiled / optimized / DLL files
