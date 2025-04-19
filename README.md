@@ -2,7 +2,6 @@
 
 ## Rasul Alakbarli, Mahammad Nuriyev, Petko Petkov
 
-
 **1. Install libraries:**
 
 ```
@@ -16,28 +15,35 @@ python -m spacy download en_core_web_sm
 python -m spacy download de_core_news_sm
 ```
 
-**3. Train (configuration can be changed in `config.py` - batch size, learning rate, epochs, etc.):**
+**3. Train:**
 
+All hyperparameters (batch size, learning rate, epochs, optimizer settings, etc.) can be configured via command-line flags. Use `-h` or `--help` to see organized groups:
+
+```bash
+python train.py --help
 ```
+
+To train with default settings:
+
+```bash
 python train.py
 ```
 
 **4. Test:**
-   
-```
-python test.py
+
+```bash
+python test.py --exp_path experiments/<your_experiment>
 ```
 
 **4. Plot results (plots are added to the experiment's directory in `experiments`):**
-   
-```
-python plot.py
+
+```bash
+python plot.py --exp_path experiments/<your_experiment>
 ```
 
 ## Paper:
 
-[[1](https://arxiv.org/abs/1706.03762)] 
+[[1](https://arxiv.org/abs/1706.03762)]
 Ashish Vaswani, Noam Shazeer, Niki Parmar, Jakob Uszkoreit, Llion Jones, Aidan N. Gomez, Lukasz Kaiser, Illia Polosukhin.
-Attention Is All You Need. 
+Attention Is All You Need.
 _arXiv:1706.03762 [cs.CL]_
-
