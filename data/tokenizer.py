@@ -73,8 +73,6 @@ class Tokenizer:
             obj = json.load(f)
         return cls(obj["language"], obj["stoi"], obj["specials"])
 
-    # ---------- instance life-cycle ---------- #
-
     def __init__(self, language: str, stoi: dict[str, int], specials: SpecialTokens):
         self.language = language
         self.stoi = stoi

@@ -1,3 +1,5 @@
+import os
+import json
 import torch
 from torch import nn
 from .module import Module
@@ -53,12 +55,21 @@ class Transformer(Module):
         # Final layer to project embedding to target vocab word probability distribution
         self.linear = nn.Linear(d_model, trg_vocab_len)
 
-        # Move to GPU if possible
-        self.to(self.device)
-
         # Re-seed afterward to allow shuffled data
         torch.seed()
-
+        
+    @property
+    def num_layers(self):
+        return len(self.encoder_stack)
+    
+    @property
+    def num_heads(self):
+        return self.encoder_stack[0].num_heads
+    
+    @property
+    def dropout_rate(self):
+        return self.encoder_stack[0].dropout_rate
+    
     def forward(self, source, target):
         # Encoder stack
         enc_out = self.src_embedding(source)
@@ -73,3 +84,46 @@ class Transformer(Module):
         # Final linear layer to get word probabilities
         # DO NOT apply softmax here, as CrossEntropyLoss already does softmax!!!
         return self.linear(dec_out)
+    
+    def save(self, path: str):
+        os.makedirs(path, exist_ok=True)
+        
+        weights_path = os.path.join(path, "weights.pth")
+        torch.save(self.state_dict(), weights_path)
+        
+        config_path = os.path.join(path, "config.json")
+        config = {
+            "d_model": self.src_embedding.d_model,
+            "src_vocab_len": self.src_embedding.vocab_len,
+            "trg_vocab_len": self.trg_embedding.vocab_len,
+            "src_pad_index": self.src_pad_index,
+            "trg_pad_index": self.trg_pad_index,
+            "num_heads": self.num_heads,
+            "num_layers": self.num_layers,
+            "dropout_rate": self.dropout_rate,
+        }
+        with open(config_path, "w") as f:
+            json.dump(config, f)
+    
+    @classmethod
+    def load(cls, path: str):
+        # Load weights
+        weights_path = os.path.join(path, "weights")
+        if not os.path.isfile(weights_path):
+            raise FileNotFoundError(f"Weights not found: {weights_path}")
+        
+        # Load config
+        config_path = os.path.join(path, "config.json")
+        if not os.path.isfile(config_path):
+            raise FileNotFoundError(f"Config not found: {config_path}")
+        # Load config
+        with open(config_path, "r") as f:
+            config = json.load(f)
+        
+        # Create model
+        model = cls(**config)
+        
+        # Load weights
+        model.load_state_dict(torch.load(weights_path, map_location=model.device))
+        model.eval()
+        return model
