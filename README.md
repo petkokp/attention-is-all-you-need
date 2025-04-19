@@ -41,6 +41,12 @@ python test.py --exp_path experiments/<your_experiment>
 python plot.py --exp_path experiments/<your_experiment>
 ```
 
+**5. Inference (Text Translation):**
+
+```bash
+python translate.py --model ./experiments/en-de/04_12_2025/12_40_09/final --text "Hello, how are you?"
+```
+
 ## Paper:
 
 [[1](https://arxiv.org/abs/1706.03762)]

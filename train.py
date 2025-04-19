@@ -15,10 +15,10 @@ dataset = Dataset(config.LANGUAGE_PAIR, batch_size=config.BATCH_SIZE)
 # Initialize model
 model = Transformer(
     config.D_MODEL,
-    len(dataset.src_vocab),
-    len(dataset.trg_vocab),
-    dataset.src_vocab.pad_index,
-    dataset.trg_vocab.pad_index
+    len(dataset.src_tokenizer),
+    len(dataset.trg_tokenizer),
+    dataset.src_tokenizer.pad_index,
+    dataset.trg_tokenizer.pad_index
 )
 
 print(f' ~  Parameter count: {sum(p.numel() for p in model.parameters() if p.requires_grad)}')
@@ -93,8 +93,8 @@ def validate(epoch):
                 p_indices_list = p_indices[i].tolist()
                 trg_indices_list = trg[i, 1:].tolist()
                 
-                p_tokens = dataset.trg_vocab.decode(p_indices_list)
-                t_tokens = dataset.trg_vocab.decode(trg_indices_list)
+                p_tokens = dataset.trg_tokenizer.decode(p_indices_list)
+                t_tokens = dataset.trg_tokenizer.decode(trg_indices_list)
 
                 # Filter out special tokens
                 p_tokens = list(filter(lambda x: '<' not in x, p_tokens))
@@ -115,3 +115,10 @@ def validate(epoch):
 
 
 experiment.loop(config.NUM_EPOCHS, train)
+
+experiment.save_model("final")             # last checkpoint, optional name
+experiment.save_tokenizers(
+    "final",
+    dataset.src_tokenizer,
+    dataset.trg_tokenizer,
+)

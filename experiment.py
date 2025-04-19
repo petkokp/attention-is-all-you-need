@@ -1,14 +1,16 @@
 import os
 import atexit
-import torch
 import math
 from torch.utils.tensorboard import SummaryWriter
 from datetime import datetime
 from tqdm import tqdm
+from modules.transformer import Transformer
+from data.tokenizer import Tokenizer
+
 
 class Experiment:
     def __init__(self,
-                 model: torch.nn.Module,
+                 model: Transformer,
                  category: str | list[str] = None,
                  root: str = 'experiments'):
         self.model = model
@@ -54,11 +56,11 @@ class Experiment:
             file.write(f'{step}, {value}\n')
 
     def save_model(self, file_name):
-        weight_dir = os.path.join(self.path, 'weights')
-        if not os.path.isdir(weight_dir):
-            os.makedirs(weight_dir)
+        self.model.save(file_name)
 
-        torch.save(
-            self.model.state_dict(),
-            os.path.join(weight_dir, file_name)
-        )
+    def save_tokenizers(self, file_name, src_tok: Tokenizer, trg_tok: Tokenizer):
+        tok_dir = os.path.join(self.path, file_name)
+        os.makedirs(tok_dir, exist_ok=True)
+
+        src_tok.save(os.path.join(tok_dir, f"src_{src_tok.language}.json"))
+        trg_tok.save(os.path.join(tok_dir, f"trg_{trg_tok.language}.json"))
