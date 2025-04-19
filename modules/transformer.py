@@ -88,7 +88,7 @@ class Transformer(Module):
     def save(self, path: str):
         os.makedirs(path, exist_ok=True)
         
-        weights_path = os.path.join(path, "weights.pth")
+        weights_path = os.path.join(path, "weights")
         torch.save(self.state_dict(), weights_path)
         
         config_path = os.path.join(path, "config.json")
