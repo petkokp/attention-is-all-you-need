@@ -1,7 +1,7 @@
 import os
 import json
 from collections import Counter
-from typing import List, TypedDict, cast
+from typing import List, Tuple, TypedDict, cast
 import spacy
 from spacy.language import Language
 
@@ -65,6 +65,27 @@ class Tokenizer:
 
         stoi = {tok: i for i, tok in enumerate(vocab)}
         return cls(language, stoi, specials)
+
+    @classmethod
+    def load_from_model(cls, path: str) -> Tuple["Tokenizer", "Tokenizer"]:
+        """Load a Tokenizer from a model checkpoint."""
+        # find any file starting with src in the path
+        src_tokenizer_path = None
+        trg_tokenizer_path = None
+        for file in os.listdir(path):
+            if file.startswith("src") and file.endswith(".json"):
+                src_tokenizer_path = os.path.join(path, file)
+            elif file.startswith("trg") and file.endswith(".json"):
+                trg_tokenizer_path = os.path.join(path, file)
+        if src_tokenizer_path is None:
+            raise ValueError("No source tokenizer found in the model checkpoint.")
+
+        if trg_tokenizer_path is None:
+            raise ValueError("No target tokenizer found in the model checkpoint.")
+
+        src_tokenizer = cls.load(src_tokenizer_path)
+        trg_tokenizer = cls.load(trg_tokenizer_path)
+        return src_tokenizer, trg_tokenizer
 
     @classmethod
     def load(cls, path: str) -> "Tokenizer":

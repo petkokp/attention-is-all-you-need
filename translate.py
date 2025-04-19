@@ -16,18 +16,6 @@ def parse_args() -> argparse.Namespace:
         required=True,
         help="Path to model directory (containing config.json & weights)",
     )
-    parser.add_argument(
-        "--src_tokenizer",
-        type=str,
-        required=True,
-        help="Path to source-language tokenizer JSON",
-    )
-    parser.add_argument(
-        "--trg_tokenizer",
-        type=str,
-        required=True,
-        help="Path to target-language tokenizer JSON",
-    )
     parser.add_argument("--text", type=str, required=True, help="Sentence to translate")
     parser.add_argument(
         "--max_len",
@@ -83,8 +71,7 @@ def main() -> None:
     args = parse_args()
 
     # Load tokenizers
-    src_tok = Tokenizer.load(args.src_tokenizer)
-    trg_tok = Tokenizer.load(args.trg_tokenizer)
+    src_tok, trg_tok = Tokenizer.load_from_model(args.model)
 
     # Load model
     model = Transformer.load(args.model)
