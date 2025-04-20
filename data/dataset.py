@@ -1,15 +1,14 @@
-import spacy
+from typing import Optional, cast
 import torch
 from torch.utils.data import Dataset as TorchDataset # Rename to avoid conflict
 from torch.utils.data import DataLoader
 from torch.nn.utils.rnn import pad_sequence
-from collections import Counter, OrderedDict
 import os
 import requests
 import tarfile
 import logging
 from tqdm import tqdm
-from .vocab import Vocab
+from .tokenizer import Tokenizer, SpecialTokens
 
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 
@@ -27,20 +26,9 @@ EXTRACTED_PATHS = {
 
 
 class Dataset:
-    # Load spacy models only once
-    try:
-        _spacy_pipelines = {
-            'en': spacy.load('en_core_web_sm'),
-            'de': spacy.load('de_core_news_sm')
-        }
-    except IOError:
-        print("Spacy models not found. Please run:")
-        print("python -m spacy download en_core_web_sm")
-        print("python -m spacy download de_core_news_sm")
-        exit()
 
     class _TorchDataset(TorchDataset):
-        def __init__(self, src_sentences, trg_sentences, parent_dataset):
+        def __init__(self, src_sentences, trg_sentences, parent_dataset: 'Dataset'):
             self.src_sentences = src_sentences
             self.trg_sentences = trg_sentences
             self.parent = parent_dataset # Reference to the outer Dataset instance
@@ -53,41 +41,27 @@ class Dataset:
             trg_text = self.trg_sentences[idx]
 
             # Use the outer class's tokenize and encode methods/vocabs
-            src_tokens = self.parent.tokenize_sentence(src_text, self.parent.src_lang)
-            trg_tokens = self.parent.tokenize_sentence(trg_text, self.parent.trg_lang)
-
-            src_indices = self.parent.src_vocab.encode(src_tokens)
-            trg_indices = self.parent.trg_vocab.encode(trg_tokens)
+            src_tokens = self.parent.src_tokenizer.encode(src_text)
+            trg_tokens = self.parent.trg_tokenizer.encode(trg_text)
 
             # Return tensors for the collate function
-            return torch.tensor(src_indices, dtype=torch.long), torch.tensor(trg_indices, dtype=torch.long)
+            return torch.tensor(src_tokens, dtype=torch.long), torch.tensor(trg_tokens, dtype=torch.long)
 
     def __init__(self,
                  language_pair=('de', 'en'), # Source, Target
-                 sos_token='<sos>',
-                 eos_token='<eos>',
-                 unk_token='<unk>',
-                 pad_token='<pad>',
                  batch_size=64,
                  data_root=DATA_ROOT,
-                 min_vocab_freq=2): # Min frequency for vocab
+                 min_vocab_freq=2,
+                 specials: Optional[SpecialTokens]=None,
+                 ): # Min frequency for vocab
+        
+        self.specials = specials or Tokenizer._default_specials()
 
         self.src_lang, self.trg_lang = language_pair
-        assert self.src_lang in Dataset._spacy_pipelines, f'Unsupported source language: {self.src_lang}'
-        assert self.trg_lang in Dataset._spacy_pipelines, f'Unsupported target language: {self.trg_lang}'
-
-        self.sos_token = sos_token
-        self.eos_token = eos_token
-        self.unk_token = unk_token
-        self.pad_token = pad_token
-        self.special_tokens = [self.unk_token, self.pad_token, self.sos_token, self.eos_token]
 
         self.batch_size = batch_size
         self.data_root = data_root
         self.min_vocab_freq = min_vocab_freq
-
-        self.src_tokenizer = Dataset._spacy_pipelines[self.src_lang].tokenizer
-        self.trg_tokenizer = Dataset._spacy_pipelines[self.trg_lang].tokenizer
 
         self._download_and_extract_all()
 
@@ -110,13 +84,13 @@ class Dataset:
              logging.error("Please check the filenames inside the extracted folders ('multi30k_train', etc.)")
              logging.error(f"Searched in: {EXTRACTED_PATHS}")
              raise
-
-        logging.info("Building source vocabulary...")
-        self.src_vocab = self._build_vocab(train_src_raw, self.src_tokenizer)
+ 
+        logging.info("Building source tokenizer...")
+        self.src_tokenizer = Tokenizer.build(train_src_raw, self.src_lang, self.specials, self.min_vocab_freq)
         logging.info("Building target vocabulary...")
-        self.trg_vocab = self._build_vocab(train_trg_raw, self.trg_tokenizer)
-        logging.info(f"Source vocab size: {len(self.src_vocab)}")
-        logging.info(f"Target vocab size: {len(self.trg_vocab)}")
+        self.trg_tokenizer = Tokenizer.build(train_trg_raw, self.trg_lang, self.specials, self.min_vocab_freq)
+        logging.info(f"Source vocab size: {len(self.src_tokenizer)}")
+        logging.info(f"Target vocab size: {len(self.trg_tokenizer)}")
 
         self.train_torch_dataset = self._TorchDataset(train_src_raw, train_trg_raw, self)
         self.valid_torch_dataset = self._TorchDataset(valid_src_raw, valid_trg_raw, self)
@@ -243,28 +217,11 @@ class Dataset:
         logging.info(f"Loaded {len(sentences)} sentences.")
         return sentences
 
-    def _build_vocab(self, data_iter, tokenizer):
-        counter = Counter()
-        for sentence in tqdm(data_iter, desc="Building vocab"):
-            counter.update(token.text.lower() for token in tokenizer(sentence))
-        return Vocab(counter, specials=self.special_tokens, min_freq=self.min_vocab_freq)
-
-    def tokenize_sentence(self, sentence, lang):
-        if lang == self.src_lang:
-            tokenizer = self.src_tokenizer
-        elif lang == self.trg_lang:
-            tokenizer = self.trg_tokenizer
-        else:
-            raise ValueError(f"Unknown language for tokenization: {lang}")
-
-        tokens = [self.sos_token] + [tok.text.lower() for tok in tokenizer(sentence)] + [self.eos_token]
-        return tokens
-
     def _collate_fn(self, batch):
-        src_batch, trg_batch = zip(*batch)
+        src_batch, trg_batch = cast(list[torch.Tensor], zip(*batch))
 
         # Pad sequences in the batch
-        src_padded = pad_sequence(src_batch, batch_first=True, padding_value=self.src_vocab.pad_index)
-        trg_padded = pad_sequence(trg_batch, batch_first=True, padding_value=self.trg_vocab.pad_index)
+        src_padded = pad_sequence(src_batch, batch_first=True, padding_value=self.src_tokenizer.pad_index)
+        trg_padded = pad_sequence(trg_batch, batch_first=True, padding_value=self.trg_tokenizer.pad_index)
 
         return {'source': src_padded, 'target': trg_padded}
