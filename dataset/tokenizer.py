@@ -22,7 +22,13 @@ class Tokenizer:
 
     _spacy_cache: dict[str, Language] = {}  # lang -> nlp object
 
-    _MODEL_NAME = {"en": "en_core_web_sm", "de": "de_core_news_sm"}
+    _MODEL_NAME = {
+        "en": "en_core_web_sm",
+        "de": "de_core_news_sm",
+        "fr": "fr_core_news_sm",
+        "es": "es_core_news_sm",
+        # add more languages as needed
+    }
 
     @classmethod
     def _nlp(cls, lang: str) -> Language:
