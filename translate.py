@@ -1,6 +1,6 @@
 import argparse
 from typing import List
-from data.tokenizer import Tokenizer
+from dataset.tokenizer import Tokenizer
 from modules.transformer import Transformer
 import torch
 

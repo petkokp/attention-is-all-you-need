@@ -5,7 +5,7 @@ from torch.utils.tensorboard import SummaryWriter
 from datetime import datetime
 from tqdm import tqdm
 from modules.transformer import Transformer
-from data.tokenizer import Tokenizer
+from dataset.tokenizer import Tokenizer
 
 
 class Experiment:

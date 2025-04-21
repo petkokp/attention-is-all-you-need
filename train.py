@@ -1,6 +1,6 @@
 import torch
 import config
-from data.dataset import Dataset
+from dataset.dataset import Dataset
 from modules.transformer import Transformer
 from nltk.translate.bleu_score import sentence_bleu
 from experiment import Experiment
